@@ -129,3 +129,27 @@ function y() {
 unzip_to_folder() {
     unzip "$1" -d "${1%.zip}"
 }
+
+extract_to_dir() {
+  local file="$1"
+  local dir="${file%.tar*}"
+  dir="${dir%.tgz}"
+
+  if [[ -z "$file" || ! -f "$file" ]]; then
+    echo "Error: File '$file' not found." >&2
+    return 1
+  fi
+
+  mkdir -p "$dir" && pv "$file" | tar -xf - -C "$dir"
+}
+
+extract_here() {
+  local file="$1"
+
+  if [[ -z "$file" || ! -f "$file" ]]; then
+    echo "Error: File '$file' not found." >&2
+    return 1
+  fi
+
+  pv "$file" | tar -xf - 
+}
