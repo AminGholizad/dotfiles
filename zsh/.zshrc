@@ -131,25 +131,74 @@ unzip_to_folder() {
 }
 
 extract_to_dir() {
-  local file="$1"
-  local dir="${file%.tar*}"
-  dir="${dir%.tgz}"
+  local delete_after=false
+  local files=()
 
-  if [[ -z "$file" || ! -f "$file" ]]; then
-    echo "Error: File '$file' not found." >&2
+  for arg in "$@"; do
+    if [[ "$arg" == "-d" ]]; then
+      delete_after=true
+    else
+      files+=("$arg")
+    fi
+  done
+
+  if [[ ${#files[@]} -eq 0 ]]; then
+    echo "Error: No files specified." >&2
     return 1
   fi
 
-  mkdir -p "$dir" && pv "$file" | tar -xf - -C "$dir"
+  for file in "${files[@]}"; do
+    if [[ ! -f "$file" ]]; then
+      echo "Error: File '$file' not found." >&2
+      continue
+    fi
+
+    local dir="${file%.tar*}"
+    dir="${dir%.tgz}"
+
+    echo "Extracting $file into $dir..."
+    if mkdir -p "$dir" && pv "$file" | tar -x -f - -C "$dir"; then
+      if [[ "$delete_after" == true ]]; then
+        echo "Deleting $file..."
+        rm -- "$file"
+      fi
+    else
+      echo "Error: Extraction failed for $file. Archive was kept." >&2
+    fi
+  done
 }
 
 extract_here() {
-  local file="$1"
+  local delete_after=false
+  local files=()
 
-  if [[ -z "$file" || ! -f "$file" ]]; then
-    echo "Error: File '$file' not found." >&2
+  for arg in "$@"; do
+    if [[ "$arg" == "-d" ]]; then
+      delete_after=true
+    else
+      files+=("$arg")
+    fi
+  done
+
+  if [[ ${#files[@]} -eq 0 ]]; then
+    echo "Error: No files specified." >&2
     return 1
   fi
 
-  pv "$file" | tar -xf - 
+  for file in "${files[@]}"; do
+    if [[ ! -f "$file" ]]; then
+      echo "Error: File '$file' not found." >&2
+      continue
+    fi
+
+    echo "Extracting $file here..."
+    if pv "$file" | tar -x -f -; then
+      if [[ "$delete_after" == true ]]; then
+        echo "Deleting $file..."
+        rm -- "$file"
+      fi
+    else
+      echo "Error: Extraction failed for $file. Archive was kept." >&2
+    fi
+  done
 }
