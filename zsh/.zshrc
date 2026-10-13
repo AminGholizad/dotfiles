@@ -160,7 +160,7 @@ extract_to_dir() {
     if mkdir -p "$dir" && pv "$file" | tar -x -f - -C "$dir"; then
       if [[ "$delete_after" == true ]]; then
         echo "Deleting $file..."
-        rm -- "$file"
+        rm -f -- "$file"
       fi
     else
       echo "Error: Extraction failed for $file. Archive was kept." >&2
@@ -195,7 +195,7 @@ extract_here() {
     if pv "$file" | tar -x -f -; then
       if [[ "$delete_after" == true ]]; then
         echo "Deleting $file..."
-        rm -- "$file"
+        rm -f -- "$file"
       fi
     else
       echo "Error: Extraction failed for $file. Archive was kept." >&2
