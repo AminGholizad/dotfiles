@@ -136,23 +136,38 @@ extract() {
   local custom_dir=""
   local files=()
 
+  # Parse flags, supporting combined/clustered short options (e.g., -odn foo)
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -d)
-        delete_after=true
-        shift
-        ;;
-      -o)
-        auto_dir=true
-        shift
-        ;;
-      -n)
-        custom_dir="$2"
-        shift 2
-        ;;
       -*)
-        echo "Error: Unknown option '$1'" >&2
-        return 1
+        # Strip the leading dash and look at the character group
+        local flags="${1#-}"
+        shift
+
+        # Loop through each character in the flag group (e.g., "odn" -> 'o', 'd', 'n')
+        for (( i=0; i<${#flags}; i++ )); do
+          local char="${flags:i:1}"
+          case "$char" in
+            d) delete_after=true ;;
+            o) auto_dir=true ;;
+            n)
+              # If 'n' is the last character in the cluster (e.g., -odn foo),
+              # grab the next argument. If it's embedded with an argument (e.g., -nfoo),
+              # grab the remainder of the string.
+              if (( i + 1 < ${#flags} )); then
+                custom_dir="${flags:i+1}"
+                break # Consume the rest of the string as the directory
+              else
+                custom_dir="$1"
+                shift
+              fi
+              ;;
+            *)
+              echo "Error: Unknown option '-$char'" >&2
+              return 1
+              ;;
+          esac
+        done
         ;;
       *)
         files+=("$1")
