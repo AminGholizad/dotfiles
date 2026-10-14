@@ -130,20 +130,39 @@ unzip_to_folder() {
     unzip "$1" -d "${1%.zip}"
 }
 
-extract_to_dir() {
+extract() {
   local delete_after=false
+  local auto_dir=false
+  local custom_dir=""
   local files=()
 
-  for arg in "$@"; do
-    if [[ "$arg" == "-d" ]]; then
-      delete_after=true
-    else
-      files+=("$arg")
-    fi
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -d)
+        delete_after=true
+        shift
+        ;;
+      -o)
+        auto_dir=true
+        shift
+        ;;
+      -n)
+        custom_dir="$2"
+        shift 2
+        ;;
+      -*)
+        echo "Error: Unknown option '$1'" >&2
+        return 1
+        ;;
+      *)
+        files+=("$1")
+        shift
+        ;;
+    esac
   done
 
   if [[ ${#files[@]} -eq 0 ]]; then
-    echo "Error: No files specified." >&2
+    echo "Error: No archive files specified." >&2
     return 1
   fi
 
@@ -153,46 +172,24 @@ extract_to_dir() {
       continue
     fi
 
-    local dir="${file%.tar*}"
-    dir="${dir%.tgz}"
+    local archive_name="${file%.tar*}"
+    archive_name="${archive_name%.tgz}"
+    archive_name="$(basename "$archive_name")"
 
-    echo "Extracting $file into $dir..."
-    if mkdir -p "$dir" && pv "$file" | tar -x -f - -C "$dir"; then
-      if [[ "$delete_after" == true ]]; then
-        echo "Deleting $file..."
-        rm -f -- "$file"
-      fi
-    else
-      echo "Error: Extraction failed for $file. Archive was kept." >&2
-    fi
-  done
-}
+    local target_dir="."
 
-extract_here() {
-  local delete_after=false
-  local files=()
-
-  for arg in "$@"; do
-    if [[ "$arg" == "-d" ]]; then
-      delete_after=true
-    else
-      files+=("$arg")
-    fi
-  done
-
-  if [[ ${#files[@]} -eq 0 ]]; then
-    echo "Error: No files specified." >&2
-    return 1
-  fi
-
-  for file in "${files[@]}"; do
-    if [[ ! -f "$file" ]]; then
-      echo "Error: File '$file' not found." >&2
-      continue
+    if [[ -n "$custom_dir" && "$auto_dir" == true ]]; then
+      target_dir="$custom_dir/$archive_name"
+    elif [[ -n "$custom_dir" ]]; then
+      target_dir="$custom_dir"
+    elif [[ "$auto_dir" == true ]]; then
+      target_dir="$archive_name"
     fi
 
-    echo "Extracting $file here..."
-    if pv "$file" | tar -x -f -; then
+    mkdir -p "$target_dir"
+
+    echo "Extracting $file -> $target_dir..."
+    if pv "$file" | tar -x -f - -C "$target_dir"; then
       if [[ "$delete_after" == true ]]; then
         echo "Deleting $file..."
         rm -f -- "$file"
